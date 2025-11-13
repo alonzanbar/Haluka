@@ -3,8 +3,15 @@ from openpyxl import Workbook
 from maps import geocode_missing_and_save, get_optimized_address_order
 from ml import *
 
+
+PACKAGES = 'כמה מארזים'
+PHONE = 'פלאפון'
+ADDRESS = 'כתובת'
+NAME = 'שם'
+IS_THIS_DIST = "השבוע מחלקים?"
+
 api_key = 'AIzaSyDXFcbcYfJYZVNbgiSB6MSLde2SHxVUekY'
-sheet_name = "29.8.25"
+sheet_name = "Sheet11"
 origin_address = "מטווח אריאל"
 output_file = "delivery_routes_1_8_{}.xlsx"
 
@@ -21,8 +28,10 @@ def prompt_for_excel_file():
 
 def load_recipients(filename):
     df = pd.read_excel(filename,sheet_name)
-    expected_cols = {'name', 'address', 'phone', 'packages'}
-    df = geocode_missing_and_save(df.iloc[:,:].copy(), api_key,'address','latitude','longitude',filename,sheet_name)
+    expected_cols = {('%s' % NAME), ('%s' % ADDRESS), ('%s' % PHONE), ('%s' % PACKAGES)}
+    df = df[df[IS_THIS_DIST]=="כן"].copy()
+    df[ADDRESS] = df[ADDRESS].apply(lambda x: '%s + אריאל' % x)
+    df = geocode_missing_and_save(df.iloc[:,:].copy(), api_key, ADDRESS, 'latitude', 'longitude', filename, sheet_name)
     if not expected_cols.issubset(df.columns):
         raise ValueError(f"The file must contain columns: {expected_cols}")
     return df
@@ -42,22 +51,23 @@ def prompt_for_num_groups():
 def process_group(group_df, group_id, api_key, origin_address, writer):
     print(f"\n📦 Group {group_id + 1}")
 
+
     # Step 1: Build full address list
-    recipient_addresses = group_df['address'].tolist()
+    recipient_addresses = group_df[('%s' % ADDRESS)].tolist()
     full_address_list = [origin_address] + recipient_addresses + [origin_address]
 
     # Step 2: Get optimized order from Google
     try:
         optimized_addresses = get_optimized_address_order(full_address_list, api_key)
         delivery_addresses = optimized_addresses[1:-1]  # exclude fixed origin
-        group_df = group_df.set_index('address').loc[delivery_addresses].reset_index()
+        group_df = group_df.set_index(ADDRESS).loc[delivery_addresses].reset_index()
     except Exception as e:
         print(f"⚠️ Failed to optimize route: {e}")
         delivery_addresses = recipient_addresses  # fallback
 
     # Step 3: Print optimized delivery route
     for idx, row in group_df.iterrows():
-        print(f"  {idx+1}. {row['name']} - {row['address']} ({row['packages']} packages)")
+        print(f"  {idx + 1}. {row[NAME]} - {row[ADDRESS]} ({row[PACKAGES]} packages)")
 
     # Step 4: Generate Google Maps link
     map_link = generate_google_maps_link([origin_address] + delivery_addresses + [origin_address])
