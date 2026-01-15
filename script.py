@@ -11,7 +11,7 @@ NAME = 'שם'
 IS_THIS_DIST = "השבוע מחלקים?"
 
 api_key = 'AIzaSyDXFcbcYfJYZVNbgiSB6MSLde2SHxVUekY'
-sheet_name = "Sheet1"
+sheet_name = "כל הכתובות"
 origin_address = "מטווח אריאל"
 output_file = "delivery_routes_11_22.xlsx"
 
